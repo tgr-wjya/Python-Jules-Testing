@@ -1,2 +1,11 @@
-
 CLAUDE.local.md
+.superpowers/
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+.pytest_cache/
+.venv/
+env/
+venv/
