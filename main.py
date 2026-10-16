@@ -1,9 +1,10 @@
+import asyncio
+import time
 from contextlib import asynccontextmanager
 from typing import List, Optional
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
-import time
 from database import engine, Base, get_db, SessionLocal
 from models import (
     Treasury,
@@ -11,6 +12,9 @@ from models import (
     StaffMember,
     StaffResponse,
     StaffCreate,
+    DispatchMission,
+    DispatchCreate,
+    DispatchResponse,
 )
 
 
@@ -90,4 +94,32 @@ async def extract_soldier(payload: StaffCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(soldier)
     return soldier
+
+
+@app.post("/dispatch/deploy", response_model=DispatchResponse, status_code=201)
+async def deploy_mission(payload: DispatchCreate, db: Session = Depends(get_db)):
+    """
+    Deploy combat personnel on external operations.
+    Validates and debits operational GMP cost from Mother Base treasury.
+    """
+    treasury = db.query(Treasury).filter(Treasury.id == 1).first()
+    if not treasury or treasury.gmp_balance < payload.gmp_cost:
+        raise HTTPException(status_code=400, detail="Insufficient GMP in Mother Base treasury")
+
+    # Processing/network latency between check and deduction (TOCTOU race window)
+    await asyncio.sleep(0.05)
+
+    treasury.gmp_balance -= payload.gmp_cost
+
+    mission = DispatchMission(
+        title=payload.title,
+        gmp_cost=payload.gmp_cost,
+        reward_gmp=payload.reward_gmp,
+        status="DEPLOYED",
+    )
+    db.add(mission)
+    db.commit()
+    db.refresh(mission)
+    return mission
+
 

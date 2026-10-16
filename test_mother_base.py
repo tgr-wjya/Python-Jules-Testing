@@ -63,3 +63,26 @@ async def test_fulton_single_extraction():
         assert data["languages"] == "English, Kikongo"
         assert data["is_quarantined"] is False
 
+
+@pytest.mark.asyncio
+async def test_dispatch_single_deployment():
+    """Verify single combat deployment deducts upfront GMP and creates mission."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {
+            "title": "Intercept the Arms Courier",
+            "gmp_cost": 50000,
+            "reward_gmp": 120000
+        }
+        response = await client.post("/dispatch/deploy", json=payload)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["title"] == "Intercept the Arms Courier"
+        assert data["gmp_cost"] == 50000
+        assert data["status"] == "DEPLOYED"
+
+        # Verify treasury was debited
+        treasury_res = await client.get("/treasury")
+        assert treasury_res.json()["gmp_balance"] == 450000
+
+
