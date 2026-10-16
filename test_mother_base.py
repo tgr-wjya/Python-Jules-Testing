@@ -1,0 +1,43 @@
+import pytest
+from httpx import AsyncClient, ASGITransport
+from main import app
+from database import SessionLocal, Base, engine
+from models import Treasury
+
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    """Reset database state before each test."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    # Seed initial treasury with 500,000 GMP if not present
+    treasury = Treasury(id=1, gmp_balance=500000)
+    db.add(treasury)
+    db.commit()
+    db.close()
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.mark.asyncio
+async def test_health_check():
+    """Verify health endpoint responds with operational status."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "OPERATIONAL"
+        assert data["command"] == "Diamond Dogs Mother Base"
+
+
+@pytest.mark.asyncio
+async def test_get_treasury():
+    """Verify treasury endpoint returns initial GMP balance."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/treasury")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["gmp_balance"] == 500000
