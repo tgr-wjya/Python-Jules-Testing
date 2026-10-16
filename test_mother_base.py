@@ -86,3 +86,30 @@ async def test_dispatch_single_deployment():
         assert treasury_res.json()["gmp_balance"] == 450000
 
 
+@pytest.mark.asyncio
+async def test_quarantine_single_case_matching():
+    """Verify quarantine isolation sets is_quarantined for matching staff."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Seed staff with exact match "Kikongo"
+        payload = {
+            "codename": "Laughing Wallaby",
+            "unit": "MEDICAL",
+            "rank": "B",
+            "languages": "English, Kikongo"
+        }
+        await client.post("/fulton/extract", json=payload)
+
+        # Trigger isolation with exact casing
+        res = await client.post("/quarantine/isolate-outbreak", params={"target_language": "Kikongo"})
+        assert res.status_code == 200
+        assert res.json()["isolated_count"] == 1
+        assert res.json()["target_language"] == "Kikongo"
+
+        # Verify staff record is now quarantined
+        staff_res = await client.get("/staff", params={"quarantined": True})
+        assert len(staff_res.json()) == 1
+        assert staff_res.json()[0]["codename"] == "Laughing Wallaby"
+
+
+

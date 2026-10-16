@@ -15,6 +15,7 @@ from models import (
     DispatchMission,
     DispatchCreate,
     DispatchResponse,
+    QuarantineResponse,
 )
 
 
@@ -121,5 +122,30 @@ async def deploy_mission(payload: DispatchCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(mission)
     return mission
+
+
+@app.post("/quarantine/isolate-outbreak", response_model=QuarantineResponse)
+async def isolate_outbreak(
+    target_language: str = Query(..., description="Pathogen vector language"),
+    db: Session = Depends(get_db),
+):
+    """
+    Scan personnel roster and quarantine carriers of vocal cord parasite vector language.
+    """
+    # Flaw: In-memory table scan and per-row commits
+    all_staff = db.query(StaffMember).all()
+    quarantined_count = 0
+    for staff in all_staff:
+        # Flaw: Case-sensitive substring check
+        if target_language in staff.languages:
+            staff.is_quarantined = True
+            db.commit()
+            quarantined_count += 1
+
+    return QuarantineResponse(
+        isolated_count=quarantined_count,
+        target_language=target_language,
+    )
+
 
 
