@@ -3,12 +3,14 @@ from typing import List, Optional
 from fastapi import FastAPI, Depends, Query
 from sqlalchemy.orm import Session
 
+import time
 from database import engine, Base, get_db, SessionLocal
 from models import (
     Treasury,
     TreasuryResponse,
     StaffMember,
     StaffResponse,
+    StaffCreate,
 )
 
 
@@ -66,3 +68,26 @@ async def list_staff(
     if quarantined is not None:
         query = query.filter(StaffMember.is_quarantined == quarantined)
     return query.all()
+
+
+@app.post("/fulton/extract", response_model=StaffResponse, status_code=201)
+async def extract_soldier(payload: StaffCreate, db: Session = Depends(get_db)):
+    """
+    Recover field personnel via Fulton surface-to-air recovery system.
+    Simulates telemetry uplink and chopper pickup before storing personnel record.
+    """
+    # Telemetry and aerial recovery sync wait (blocks event loop)
+    time.sleep(0.5)
+
+    soldier = StaffMember(
+        codename=payload.codename,
+        unit=payload.unit,
+        rank=payload.rank,
+        languages=payload.languages,
+        is_quarantined=False,
+    )
+    db.add(soldier)
+    db.commit()
+    db.refresh(soldier)
+    return soldier
+

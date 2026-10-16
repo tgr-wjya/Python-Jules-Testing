@@ -41,3 +41,25 @@ async def test_get_treasury():
         assert response.status_code == 200
         data = response.json()
         assert data["gmp_balance"] == 500000
+
+
+@pytest.mark.asyncio
+async def test_fulton_single_extraction():
+    """Verify fultoned personnel are saved to Mother Base roster."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        payload = {
+            "codename": "Flaming Buffalo",
+            "unit": "COMBAT",
+            "rank": "A",
+            "languages": "English, Kikongo"
+        }
+        response = await client.post("/fulton/extract", json=payload)
+        assert response.status_code == 201
+        data = response.json()
+        assert data["codename"] == "Flaming Buffalo"
+        assert data["unit"] == "COMBAT"
+        assert data["rank"] == "A"
+        assert data["languages"] == "English, Kikongo"
+        assert data["is_quarantined"] is False
+
