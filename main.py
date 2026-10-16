@@ -81,8 +81,8 @@ async def extract_soldier(payload: StaffCreate, db: Session = Depends(get_db)):
     Recover field personnel via Fulton surface-to-air recovery system.
     Simulates telemetry uplink and chopper pickup before storing personnel record.
     """
-    # Telemetry and aerial recovery sync wait (blocks event loop)
-    time.sleep(0.5)
+    # Telemetry and aerial recovery sync wait (does not block event loop)
+    await asyncio.sleep(0.5)
 
     soldier = StaffMember(
         codename=payload.codename,
